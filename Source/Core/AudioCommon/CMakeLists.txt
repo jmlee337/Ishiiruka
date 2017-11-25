@@ -4,6 +4,7 @@ set(SRCS
   CubebStream.cpp
   CubebUtils.cpp
   DPL2Decoder.cpp
+  JackStream.cpp
   Mixer.cpp
   WaveFile.cpp
   NullSoundStream.cpp

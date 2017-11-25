@@ -5,6 +5,7 @@
 #include "AudioCommon/AudioCommon.h"
 #include "AudioCommon/AlsaSoundStream.h"
 #include "AudioCommon/CubebStream.h"
+#include "AudioCommon/JackStream.h"
 #include "AudioCommon/Mixer.h"
 #include "AudioCommon/NullSoundStream.h"
 #include "AudioCommon/OpenALStream.h"
@@ -49,6 +50,8 @@ void InitSoundStream()
     g_sound_stream = std::make_unique<PulseAudio>();
   else if (backend == BACKEND_OPENSLES && OpenSLESStream::isValid())
     g_sound_stream = std::make_unique<OpenSLESStream>();
+  else if (backend == BACKEND_JACK && JackStream::isValid())
+    g_sound_stream = std::make_unique<JackStream>();
 
   if (!g_sound_stream)
   {
@@ -121,6 +124,8 @@ std::vector<std::string> GetSoundBackends()
     backends.push_back(BACKEND_OPENAL);
   if (OpenSLESStream::isValid())
     backends.push_back(BACKEND_OPENSLES);
+  if (JackStream::isValid())
+    backends.push_back(BACKEND_JACK);
   return backends;
 }
 
@@ -131,6 +136,8 @@ bool SupportsDPL2Decoder(const std::string& backend)
     return true;
 #endif
   if (backend == BACKEND_CUBEB)
+    return true;
+  if (backend == BACKEND_JACK)
     return true;
   if (backend == BACKEND_PULSEAUDIO)
     return true;
@@ -147,7 +154,11 @@ bool SupportsVolumeChanges(const std::string& backend)
   // FIXME: this one should ask the backend whether it supports it.
   //       but getting the backend from string etc. is probably
   //       too much just to enable/disable a stupid slider...
-  return backend == BACKEND_CUBEB || backend == BACKEND_OPENAL || backend == BACKEND_XAUDIO2;
+  return 
+      backend == BACKEND_CUBEB ||
+      backend == BACKEND_JACK ||
+      backend == BACKEND_OPENAL ||
+      backend == BACKEND_XAUDIO2;
 }
 
 void UpdateSoundStream()
