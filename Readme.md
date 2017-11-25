@@ -217,3 +217,21 @@ List of user folders:
 Custom textures have to be placed in the user directory under
 `Load/Textures/[GameID]/`. You can find the Game ID by right-clicking a game
 in the ISO list and selecting "ISO Properties".
+
+## JACK Audio Connection Kit
+
+Ishiiruka includes a backend for JACK Audio Connection Kit, which provides
+real-time, low-latency connections for audio. To use it, you'll need to add the
+following packages (Ubuntu names):
+
+* `jackd` required to run
+* `libjack-jackd2-dev` required to build
+* `pulseaudio-module-jack` to hear normal audio at the same time
+* `qjackctl` required to configure JACK server settings. You'll need to at least
+  set sample rate to 48000 Hz, since it defaults to 44100 Hz and that's wrong.
+  You can also change the buffer size to reduce latency. Lower buffer requires
+  more CPU.
+
+After you configure JACK server settings with `qjackctl`, you don't need to keep
+it open or anything. Ishiiruka will automatically start a JACK server and pick
+up any settings you've changed.
