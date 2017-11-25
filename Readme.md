@@ -237,7 +237,7 @@ size of the buffer in the same proportion.
 I managed to get down to 256 * 2 = 512 samples (10.7ms @48000 Hz) buffer while remaining stable on
 my development machine, which has a Core i5-2430M with Intel HD Graphics 3000 from 2012. You can
 almost certainly do better. Go as low as you can without making `XRUN Count` tick up in `qjackctl`.
-It's the red number - or green if it's stil `0 (0)`. 
+It's the red number - or green if it's still `0 (0)`. 
 
 After you've decided on JACK server settings with `qjackctl` you can close it until the next time
 you want to change them. If no JACK server is running, Ishiiruka will automatically start one, using
