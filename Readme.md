@@ -220,18 +220,24 @@ in the ISO list and selecting "ISO Properties".
 
 ## JACK Audio Connection Kit
 
-Ishiiruka includes a backend for JACK Audio Connection Kit, which provides
-real-time, low-latency connections for audio. To use it, you'll need to add the
-following packages (Ubuntu names):
+Ishiiruka includes a backend for JACK Audio Connection Kit, which provides real-time, low-latency
+connections for audio. To use it, you'll need to add the following packages (Ubuntu names):
 
-* `jackd` required to run
-* `libjack-jackd2-dev` required to build
-* `pulseaudio-module-jack` to hear normal audio at the same time
-* `qjackctl` required to configure JACK server settings. You'll need to at least
-  set sample rate to 48000 Hz, since it defaults to 44100 Hz and that's wrong.
-  You can also change the buffer size to reduce latency. Lower buffer requires
-  more CPU.
+* `jackd` is required to run
+* `libjack-jackd2-dev` is required to build
+* `pulseaudio-module-jack` is optional if you want to hear normal audio at the same time
+* `qjackctl` is required to configure JACK server settings
 
-After you configure JACK server settings with `qjackctl`, you don't need to keep
-it open or anything. Ishiiruka will automatically start a JACK server and pick
-up any settings you've changed.
+You should make sure that the server sample rate is set to at least 48000 Hz. It may default to
+something else. Ishiiruka will try to adhere to whatever sample rate the server is set to, but
+results may vary. 48000 Hz is the default sample rate in Ishiiruka/Dolphin. Going lower increases
+latency. It is possible to go higher, but that seems to be less stable than simply decreasing the
+size of the buffer in the same proportion.
+
+I managed to get down to 256 * 2 = 512 samples (10.7ms @48000 Hz) buffer while remaining stable on
+my development machine, which has a Core i5-2430M with Intel HD Graphics 3000 from 2012. You can
+almost certainly do better.
+
+After you've decided on JACK server settings with `qjackctl` you can close it until the next time
+you want to change them. If no JACK server is running, Ishiiruka will automatically start one, using
+the same settings as the last.

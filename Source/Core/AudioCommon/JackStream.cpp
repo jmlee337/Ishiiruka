@@ -4,9 +4,9 @@
 
 #include <algorithm>
 #include <cmath>
+
 #include "AudioCommon/JackStream.h"
 #include "Common/Logging/Log.h"
-#include "Core/ConfigManager.h"
 
 constexpr const char* CLIENT_NAME = "Ishiiruka";
 constexpr const char* PORT_NAMES[6] = {"ch1", "ch2", "ch3", "ch4", "ch5", "ch6"};
@@ -49,32 +49,51 @@ int JackStream::ProcessCallback(jack_nframes_t nframes, void* arg)
 
 bool JackStream::Start()
 {
-  // stereo or surround
-  m_stereo = !SConfig::GetInstance().bDPL2Decoder;
-
-  // open jack client
   m_client = jack_client_open(CLIENT_NAME, JackNullOption, nullptr);
   if (m_client == nullptr)
   {
-    ERROR_LOG(AUDIO, "Error initializing jack stream");
+    ERROR_LOG(AUDIO, "Error opening jack client");
     return false;
   }
-
-  // set jack callback
   if (jack_set_process_callback(m_client, ProcessCallback, this))
   {
-    ERROR_LOG(AUDIO, "Error setting jack stream callback");
+    ERROR_LOG(AUDIO, "Error setting jack client callback");
     return false;
   }
 
-  // activate jack client
+  // Unfortunately it's not possible to control the sample rate of the JACK server from a client.
+  // However we can adjust our own sample rate to match. This won't always produce good results, so
+  // log a warning if we adjust.
+  jack_nframes_t actual_sample_rate = jack_get_sample_rate(m_client);
+  unsigned int default_sample_rate = m_mixer->GetSampleRate();
+  if (actual_sample_rate != default_sample_rate)
+  {
+    m_mixer.reset(new Mixer(actual_sample_rate));
+    if (actual_sample_rate > default_sample_rate)
+    {
+      WARN_LOG(
+          AUDIO,
+          "Default sample rate: %u raised to match jack server: %u. This could cause errors.",
+          default_sample_rate,
+          actual_sample_rate);
+    }
+    else
+    {
+      WARN_LOG(
+          AUDIO,
+          "Default sample rate: %u lowered to match jack server: %u. This will increase latency.",
+          default_sample_rate,
+          actual_sample_rate);
+    }
+  }
+
   if (jack_activate(m_client))
   {
     ERROR_LOG(AUDIO, "Error activating jack client");
     return false;
   }
 
-  // get available physical playback ports
+  // from this point on, we have to free ports before leaving this context.
   int ports_wanted = m_stereo ? 2 : 6;
   const char** ports = jack_get_ports(m_client, nullptr, nullptr, JackPortIsPhysical|JackPortIsInput);
   if (!ports)
@@ -91,8 +110,6 @@ bool JackStream::Start()
     jack_free(ports);
     return false;
   }
-
-  // register client jack ports and connect to physical playback ports
   for (int i = 0; i < ports_wanted; i++)
   {
     jack_port_t* port =
@@ -113,10 +130,6 @@ bool JackStream::Start()
     }
   }
   jack_free(ports);
-
-
-
-  // all done!
   return true;
 }
 

@@ -4,7 +4,6 @@ set(SRCS
   CubebStream.cpp
   CubebUtils.cpp
   DPL2Decoder.cpp
-  JackStream.cpp
   Mixer.cpp
   WaveFile.cpp
   NullSoundStream.cpp
@@ -17,6 +16,14 @@ if(OPENSLES_FOUND)
   message(STATUS "OpenSLES found, enabling OpenSLES sound backend")
   target_sources(audiocommon PRIVATE OpenSLESStream.cpp)
   target_link_libraries(audiocommon PRIVATE OpenSLES::OpenSLES)
+endif()
+
+find_package(JACK)
+if(JACK_FOUND)
+  message(STATUS "JACK found, enabling JACK sound backend")
+  target_sources(audiocommon PRIVATE JackStream.cpp)
+  target_link_libraries(audiocommon PRIVATE JACK::JACK)
+  target_compile_definitions(audiocommon PRIVATE HAVE_JACK=1)
 endif()
 
 if(ENABLE_ALSA)

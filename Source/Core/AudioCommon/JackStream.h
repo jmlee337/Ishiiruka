@@ -6,10 +6,15 @@
 
 #include <vector>
 #include "AudioCommon/SoundStream.h"
+#include "Core/ConfigManager.h"
+
+#if defined(HAVE_JACK) && HAVE_JACK
 #include <jack/jack.h>
+#endif
 
 class JackStream final : public SoundStream
 {
+#if defined(HAVE_JACK) && HAVE_JACK
 public:
   bool Start() override;
   void Stop() override;
@@ -20,10 +25,11 @@ public:
   }
 
 private:
+  bool m_stereo = !SConfig::GetInstance().bDPL2Decoder;
+  float m_volume = 0.0f;
   jack_client_t* m_client = nullptr;
-  bool m_stereo = false;
   std::vector<jack_port_t*> m_ports;
-  float m_volume = 1.0f;
 
-  static int ProcessCallback (jack_nframes_t nframes, void* arg);
+  static int ProcessCallback(jack_nframes_t nframes, void* arg);
+#endif
 };
