@@ -10,11 +10,11 @@
 
 constexpr const char* CLIENT_NAME = "Ishiiruka";
 constexpr const char* PORT_NAMES[6] = {"ch1", "ch2", "ch3", "ch4", "ch5", "ch6"};
-constexpr const jack_default_audio_sample_t DIVISOR = pow(2, sizeof(short) * 8 - 1);
+constexpr const float DIVISOR = static_cast<float>(std::numeric_limits<short>::max());
 
 int JackStream::ProcessCallback(jack_nframes_t nframes, void* arg)
 {
-  auto* self = static_cast<JackStream*>(arg);
+  JackStream* self = static_cast<JackStream*>(arg);
   if (self->m_stereo)
   {
     short buf[nframes * 2];
@@ -25,10 +25,20 @@ int JackStream::ProcessCallback(jack_nframes_t nframes, void* arg)
         (jack_default_audio_sample_t*)jack_port_get_buffer(self->m_ports[0], nframes);
     jack_default_audio_sample_t* buffer_r =
         (jack_default_audio_sample_t*)jack_port_get_buffer(self->m_ports[1], nframes);
+
+    // this method of de-interleaving is about 4x faster than a naive array iteration when compiling
+    // with -O3 on x86-64.
+    struct
+    {
+      short l;
+      short r;
+    }* mixed = reinterpret_cast<decltype(mixed)>(buf);
     for (unsigned int i = 0; i < nframes; i++)
     {
-      buffer_l[i] = buf[2 * i] * self->m_volume / DIVISOR;
-      buffer_r[i] = buf[2 * i + 1] * self->m_volume / DIVISOR;
+      // normalize range of s16 to [-1.0, 1.0]
+      *(buffer_l++) = mixed->l * self->m_volume / DIVISOR;
+      *(buffer_r++) = mixed->r * self->m_volume / DIVISOR;
+      mixed++;
     }
   }
   else
@@ -37,12 +47,34 @@ int JackStream::ProcessCallback(jack_nframes_t nframes, void* arg)
     if (self->m_mixer->MixSurround(buf, nframes) == 0)
       return -1;
 
-    for (int i = 0; i < 6; i++)
+    jack_default_audio_sample_t* out_bufs[6];
+    for (unsigned int i = 0; i < 6; i++)
     {
-      jack_default_audio_sample_t* buffer =
-          (jack_default_audio_sample_t*)jack_port_get_buffer(self->m_ports[i], nframes);
-      std::copy(buf + (i * nframes), buf + ((i + 1) * nframes), buffer);
+      out_bufs[i] = (jack_default_audio_sample_t*)jack_port_get_buffer(self->m_ports[i], nframes);
     }
+
+    // Again, this is really fast when compiled optimized compared with a naive array iteration.
+    struct
+    {
+      float f0;
+      float f1;
+      float f2;
+      float f3;
+      float f4;
+      float f5;
+    }* mixed = reinterpret_cast<decltype(mixed)>(buf);
+    for (unsigned int i = 0; i < nframes; i++)
+    {
+      // 0 leftfront, 1 rightfront, 2 center, 3 sub, 4 leftrear, 5 rightrear
+      // ignore the sub channel. According to comments in the other backends, it's no good.
+      *(out_bufs[0]++) = mixed->f0 * self->m_volume;
+      *(out_bufs[1]++) = mixed->f1 * self->m_volume;
+      *(out_bufs[2]++) = mixed->f2 * self->m_volume;
+      *(out_bufs[4]++) = mixed->f4 * self->m_volume;
+      *(out_bufs[5]++) = mixed->f5 * self->m_volume;
+    }
+    // zero the sub channel.
+    std::memset(out_bufs[3], 0, sizeof(float) * nframes);
   }
   return 0;
 }
