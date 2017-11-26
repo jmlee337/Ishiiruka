@@ -41,7 +41,6 @@
     <ClCompile Include="CubebStream.cpp" />
     <ClCompile Include="CubebUtils.cpp" />
     <ClCompile Include="DPL2Decoder.cpp" />
-    <ClCompile Include="JackStream.cpp" />
     <ClCompile Include="Mixer.cpp" />
     <ClCompile Include="NullSoundStream.cpp" />
     <ClCompile Include="OpenALStream.cpp" />

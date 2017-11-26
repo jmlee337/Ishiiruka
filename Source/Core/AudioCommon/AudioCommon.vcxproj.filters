@@ -27,9 +27,6 @@
     <ClCompile Include="CubebStream.cpp">
       <Filter>SoundStreams</Filter>
     </ClCompile>
-    <ClCompile Include="JackStream.cpp">
-      <Filter>SoundStreams</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AudioCommon.h" />
