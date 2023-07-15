@@ -28,6 +28,7 @@
 #include "Core/HW/GCPad.h"
 #include "Core/NetPlayProto.h"
 #include "DolphinWX/Config/ConfigMain.h"
+#include "DolphinWX/Config/SlippiNetworkDiagnosticDiag.h"
 #include "DolphinWX/Input/MicButtonConfigDiag.h"
 #include "DolphinWX/WxEventUtils.h"
 #include "DolphinWX/WxUtils.h"
@@ -91,6 +92,8 @@ void SlippiNetplayConfigPane::InitializeGUI()
 	ipTextValidator.SetIncludes(charsToFilter);
 	m_slippi_netplay_lan_ip_ctrl->SetValidator(ipTextValidator);
 
+	m_slippi_network_diagnostic_button = new wxButton(this, wxID_ANY, _("Network Diagnostic"));
+
 	// Input settings
 	m_reduce_timing_dispersion_checkbox = new wxCheckBox(this, wxID_ANY, _("Reduce Timing Dispersion"));
 	m_reduce_timing_dispersion_checkbox->SetToolTip(
@@ -131,6 +134,8 @@ void SlippiNetplayConfigPane::InitializeGUI()
 	                           wxALIGN_CENTER_VERTICAL);
 	sSlippiOnlineSettings->Add(m_slippi_netplay_lan_ip_ctrl, wxGBPosition(3, 1), wxDefaultSpan,
 	                           wxALIGN_LEFT | wxRESERVE_SPACE_EVEN_IF_HIDDEN);
+	sSlippiOnlineSettings->Add(m_slippi_network_diagnostic_button, wxGBPosition(4, 0), wxDefaultSpan,
+	                           wxALIGN_CENTER_VERTICAL);
 
 	wxStaticBoxSizer *const sbSlippiOnlineSettings =
 	    new wxStaticBoxSizer(wxVERTICAL, this, _("Slippi Online Settings"));
@@ -213,6 +218,7 @@ void SlippiNetplayConfigPane::BindEvents()
 	m_slippi_force_netplay_lan_ip_checkbox->Bind(wxEVT_CHECKBOX, &SlippiNetplayConfigPane::OnForceNetplayLanIpToggle,
 	                                             this);
 	m_slippi_netplay_lan_ip_ctrl->Bind(wxEVT_TEXT, &SlippiNetplayConfigPane::OnNetplayLanIpChanged, this);
+	m_slippi_network_diagnostic_button->Bind(wxEVT_BUTTON, &SlippiNetplayConfigPane::OnNetworkDiagnostic, this);
 
 	m_reduce_timing_dispersion_checkbox->Bind(wxEVT_CHECKBOX, &SlippiNetplayConfigPane::OnReduceTimingDispersionToggle,
 	                                          this);
@@ -312,6 +318,12 @@ void SlippiNetplayConfigPane::PopulateEnableChatChoiceBox()
 	auto currentChoiceStr = quickChatOptions[currentChoice];
 	int num = m_slippi_enable_quick_chat_choice->FindString(StrToWxStr(currentChoiceStr));
 	m_slippi_enable_quick_chat_choice->SetSelection(num);
+}
+
+void SlippiNetplayConfigPane::OnNetworkDiagnostic(wxCommandEvent& event)
+{
+	SlippiNetworkDiagnosticDiag networkDiagnosticDiag(this, _("Network Diagnostic"));
+	networkDiagnosticDiag.ShowModal();
 }
 
 SlippiPlaybackConfigPane::SlippiPlaybackConfigPane(wxWindow *parent, wxWindowID id)

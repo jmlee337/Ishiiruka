@@ -263,6 +263,9 @@
     <ClCompile Include="Config\SlippiConfigPane.cpp">
       <Filter>GUI\Config</Filter>
     </ClCompile>
+    <ClCompile Include="Config\SlippiNetworkDiagnosticDiag.cpp">
+      <Filter>GUI\Config</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Main.h" />
@@ -483,6 +486,9 @@
       <Filter>GUI\InputConfig</Filter>
     </ClInclude>
     <ClInclude Include="Config\SlippiConfigPane.h">
+      <Filter>GUI\Config</Filter>
+    </ClInclude>
+    <ClInclude Include="Config\SlippiNetworkDiagnosticDiag.h">
       <Filter>GUI\Config</Filter>
     </ClInclude>
   </ItemGroup>

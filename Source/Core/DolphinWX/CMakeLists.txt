@@ -11,6 +11,7 @@ set(GUI_SRCS
 	Config/AudioConfigPane.cpp
 	Config/ConfigMain.cpp
 	Config/SlippiConfigPane.cpp
+	Config/SlippiNetworkDiagnosticDiag.cpp
 	Config/GameCubeConfigPane.cpp
 	Config/GCAdapterConfigDiag.cpp
 	Config/GeneralConfigPane.cpp

@@ -40,6 +40,7 @@ class SlippiNetplayConfigPane final : public wxPanel
 	void OnQuickChatChanged(wxCommandEvent &event);
 	void OnReduceTimingDispersionToggle(wxCommandEvent &event);
 	void PopulateEnableChatChoiceBox();
+	void OnNetworkDiagnostic(wxCommandEvent &event);
 
 	wxArrayString m_slippi_enable_quick_chat_strings;
 
@@ -54,6 +55,7 @@ class SlippiNetplayConfigPane final : public wxPanel
 	wxTextCtrl *m_slippi_netplay_lan_ip_ctrl;
 	wxStaticText *m_slippi_enable_quick_chat_txt;
 	wxChoice *m_slippi_enable_quick_chat_choice;
+	wxButton *m_slippi_network_diagnostic_button;
 
 	wxCheckBox *m_reduce_timing_dispersion_checkbox;
 };
