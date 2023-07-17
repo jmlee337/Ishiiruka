@@ -159,6 +159,7 @@
     <ClInclude Include="MsgHandler.h" />
     <ClInclude Include="NandPaths.h" />
     <ClInclude Include="Network.h" />
+    <ClInclude Include="NetworkDiagnostic.h" />
     <ClInclude Include="NonCopyable.h" />
     <ClInclude Include="PcapFile.h" />
     <ClInclude Include="Profiler.h" />
@@ -208,6 +209,7 @@
     <ClCompile Include="MsgHandler.cpp" />
     <ClCompile Include="NandPaths.cpp" />
     <ClCompile Include="Network.cpp" />
+    <ClCompile Include="NetworkDiagnostic.cpp" />
     <ClCompile Include="PcapFile.cpp" />
     <ClCompile Include="Profiler.cpp" />
     <ClCompile Include="SDCardUtil.cpp" />

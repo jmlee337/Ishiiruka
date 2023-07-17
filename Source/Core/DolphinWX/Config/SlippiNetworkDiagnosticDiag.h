@@ -6,4 +6,6 @@ class SlippiNetworkDiagnosticDiag : public wxDialog
 {
   public:
 	SlippiNetworkDiagnosticDiag(wxWindow *const parent, const wxString &name);
+	~SlippiNetworkDiagnosticDiag();
+	int ShowModal() override;
 };
