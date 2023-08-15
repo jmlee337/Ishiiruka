@@ -3,6 +3,7 @@
 #include "CommonTypes.h"
 #include "Logging/Log.h"
 #include <enet/enet.h>
+#include <ws2ipdef.h>
 #include <random>
 #include <string>
 
@@ -14,6 +15,7 @@ static const std::string STUN_HOST_1 = "stun1.l.google.com";
 static const std::string STUN_HOST_2 = "stun2.l.google.com";
 static const enet_uint16 STUN_PORT_1 = 19302;
 static const enet_uint16 STUN_PORT_2 = 19302;
+static const enet_uint16 ICMP_PORT = 7;
 
 static wxTextCtrl *s_textCtrl = nullptr;
 static std::thread s_thread;
@@ -49,14 +51,18 @@ static bool Stun(ENetSocket socket, ENetAddress stunAddress, u8 *out)
 	int ret = 0;
 	u8 stunRequest[20];
 	MakeStunRequest(stunRequest);
-	ENetBuffer enetBufferOut = {sizeof(stunRequest), &stunRequest};
-	ENetBuffer enetBufferIn = {64, out};
+	ENetBuffer enetBufferOut;
+	enetBufferOut.data = &stunRequest;
+	enetBufferOut.dataLength = sizeof(stunRequest);
+	ENetBuffer enetBufferIn;
+	enetBufferIn.data = out;
+	enetBufferIn.dataLength = 64;
 	for (int timeout = 500; timeout <= 2000; timeout *= 2)
 	{
 		ret = enet_socket_send(socket, &stunAddress, &enetBufferOut, 1);
 		if (ret <= 0)
 		{
-			ERROR_LOG(SLIPPI_ONLINE, "[Network Diagnostic] Failed: socket send: %d", ret);
+			ERROR_LOG(SLIPPI_ONLINE, "[Network Diagnostic] Failed: STUN send: %d", ret);
 			return false;
 		}
 
@@ -65,7 +71,7 @@ static bool Stun(ENetSocket socket, ENetAddress stunAddress, u8 *out)
 		if (ret > 0)
 			break;
 
-		ERROR_LOG(SLIPPI_ONLINE, "[Network Diagnostic] Failed: socket receive: %d", ret);
+		ERROR_LOG(SLIPPI_ONLINE, "[Network Diagnostic] Failed: STUN receive: %d", ret);
 	}
 	return ret > 0;
 }
@@ -166,13 +172,15 @@ static ENetAddress ProcessStunResponse(u8 *in)
 	return mappedAddress;
 }
 
-static void NetworkDiagnosticThread()
+// NAT Type test
+// To determine NAT type, send two identical requests from the same port asking two different STUN servers what our
+// external IP/port is.If they don't match, then we have a hard/strict/symmetric NAT.
+static enet_uint32 NatTypeTest()
 {
-	*s_textCtrl << "Starting...\n\n";
 	ENetSocket socket = enet_socket_create(ENET_SOCKET_TYPE_DATAGRAM);
-	if (socket == -1)
+	if (socket <= 0)
 	{
-		ERROR_LOG(SLIPPI_ONLINE, "[Network Diagnostic] Failed: socket create");
+		*s_textCtrl << "NAT type test failed! could not create socket";
 		return;
 	}
 
@@ -182,14 +190,14 @@ static void NetworkDiagnosticThread()
 	u8 out1[64] = {0};
 	if (!Stun(socket, stunAddress1, out1))
 	{
-		*s_textCtrl << "Failed! STUN request 1\n";
-		return;
+		*s_textCtrl << "NAT type test failed! STUN request 1\n";
+		return 0;
 	}
 	ENetAddress address1 = ProcessStunResponse(out1);
 	if (address1.host == ENET_HOST_ANY)
 	{
-		*s_textCtrl << "Failed! STUN response 1 invalid\n";
-		return;
+		*s_textCtrl << "NAT type test failed! STUN response 1 invalid\n";
+		return 0;
 	}
 
 	ENetAddress stunAddress2;
@@ -198,21 +206,124 @@ static void NetworkDiagnosticThread()
 	u8 out2[64] = {0};
 	if (!Stun(socket, stunAddress2, out2))
 	{
-		*s_textCtrl << "Failed! STUN request 2\n";
-		return;
+		*s_textCtrl << "NAT type test failed! STUN request 2\n";
+		return address1.host;
 	}
 	ENetAddress address2 = ProcessStunResponse(out2);
 	if (address2.host == ENET_HOST_ANY)
 	{
-		*s_textCtrl << "Failed! STUN reponse 2 invalid\n";
-		return;
+		*s_textCtrl << "NAT type test failed! STUN reponse 2 invalid\n";
+		return address1.host;
 	}
 
+	enet_socket_destroy(socket);
 	*s_textCtrl << "NAT type: ";
 	if (address1.host == address2.host && address1.port == address2.port)
 		*s_textCtrl << "Normal\n";
 	else
 		*s_textCtrl << "Symmetric\n";
+	return address1.host;
+}
+
+static int Ping(int socket, int ttl, enet_uint32 inHost, u_long *outHost)
+{
+	u32 bufOut[1];
+	ENetBuffer outBuffer;
+	outBuffer.data = bufOut;
+	outBuffer.dataLength = 0;
+
+	struct sockaddr_in pingAddress;
+	pingAddress.sin_family = AF_INET;
+	pingAddress.sin_addr.s_addr = inHost;
+	pingAddress.sin_port = htons(ICMP_PORT);
+
+	u8 bufIn[64];
+	ENetBuffer inBuffer;
+	inBuffer.data = bufIn;
+	inBuffer.dataLength = sizeof(bufIn);
+
+	ENetAddress inAddress = {0, 0};
+	for (int timeout = 500; timeout <= 2000; timeout *= 2)
+	{
+		int ret = sendto(socket, bufOut, sizeof(bufOut), 0, (sockaddr *)&pingAddress, sizeof(pingAddress));
+		if (ret != 0)
+		{
+			ERROR_LOG(SLIPPI_ONLINE, "[Network Diagnostic] Failed: ping send: %d", ret);
+			return 0;
+		}
+
+		enet_socket_set_option(socket, ENET_SOCKOPT_RCVTIMEO, timeout);
+		ret = enet_socket_receive(socket, &inAddress, &inBuffer, 1);
+		if (ret >= 0)
+			break;
+
+		ERROR_LOG(SLIPPI_ONLINE, "[Network Diagnostic] Failed: ping receive: %d", ret);
+	}
+
+	if (inAddress.host != 0)
+	{
+		*outHost = inAddress.host;
+		return 1;
+	}
+	return 0;
+}
+
+// CGNAT/Double NAT test
+// Traceroute to our own external IP, any intermediate hops indicates CGNAT/double NAT.
+static bool DoubleNatTest(enet_uint32 ownHost)
+{
+	int sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+	if (sock <= 0)
+	{
+		*s_textCtrl << "CGNAT/Double NAT test failed! could not create raw socket\n";
+		return false;
+	}
+	int val = 1;
+	int ret = setsockopt(sock, IPPROTO_IP, IP_HDRINCL, (char *)&val, sizeof(val));
+	if (ret != 0)
+	{
+		*s_textCtrl << "CGNAT/Double NAT test failed! could not set IP header\n";
+		return false;
+	}
+
+	std::vector<u_long> route;
+	for (int i = 1; i < 8; i++)
+	{
+		u_long host = 0;
+		int pingRet = Ping(sock, i, ownHost, &host);
+		if (pingRet < 0)
+		{
+			return;
+		}
+		else if (pingRet > 0)
+		{
+			if (route.size() > 0 && host != *route.end())
+				route.push_back(host);
+			if (host == ownHost)
+				break;
+		}
+	}
+	if (route.size() == 0)
+	{
+		*s_textCtrl << "CGNAT/Double NAT test failed! Traceroute found no hosts\n";
+		return;
+	}
+	for (auto host : route)
+		INFO_LOG(SLIPPI_ONLINE, "[Network Diagnostic] Traceroute: %s", inet_ntoa(*(in_addr *)&host));
+
+	*s_textCtrl << "CGNAT/Double NAT: ";
+	if (route.size() == 1)
+		*s_textCtrl << "Not detected\n";
+	else
+		*s_textCtrl << "Detected\n";
+}
+
+static void NetworkDiagnosticThread()
+{
+	*s_textCtrl << "Starting...\n\n";
+
+	enet_uint32 ownHost = NatTypeTest();
+	DoubleNatTest(ownHost);
 
 	*s_textCtrl << "\nDone!";
 }
@@ -232,6 +343,8 @@ bool Start()
 		return false;
 	}
 
+	if (s_thread.joinable())
+		s_thread.join();
 	s_thread = std::thread(&NetworkDiagnosticThread);
 	return true;
 }
