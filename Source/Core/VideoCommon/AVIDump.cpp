@@ -163,23 +163,21 @@ bool AVIDump::CreateVideoFile()
 	AVOutputFormat *nextFormat = av_oformat_next(NULL);
 	while (nextFormat != NULL) {
 		ERROR_LOG(VIDEO, "Format: %s, %s", nextFormat->name, nextFormat->mime_type);
+		const AVCodecDescriptor *codecDescriptor = avcodec_descriptor_get(nextFormat->video_codec);
+		if (codecDescriptor)
+			ERROR_LOG(VIDEO, "  Codec %s", codecDescriptor->name);
 		nextFormat = av_oformat_next(nextFormat);
-	}
-
-	const AVCodecDescriptor *nextCodec = avcodec_descriptor_next(NULL);
-	while (nextCodec != NULL) {
-		if (nextCodec->type == AVMEDIA_TYPE_VIDEO) {
-			ERROR_LOG(VIDEO, "Codec: %s", nextCodec->name);
-		}
-		nextCodec = avcodec_descriptor_next(nextCodec);
 	}
 
 	const AVCodec *nextEncoder = av_codec_next(NULL);
 	while (nextEncoder != NULL) {
 		if (nextEncoder->type == AVMEDIA_TYPE_VIDEO && av_codec_is_encoder(nextEncoder)) {
 			ERROR_LOG(VIDEO, "Encoder: %s", nextEncoder->name);
+			const AVCodecDescriptor *codecDescriptor = avcodec_descriptor_get(nextEncoder->id);
+			if (codecDescriptor)
+				ERROR_LOG(VIDEO, "  Codec %s", codecDescriptor->name);
 		}
-		nextEncoder = av_codec_next(NULL);
+		nextEncoder = av_codec_next(nextEncoder);
 	}
 
 	auto* output_format = av_guess_format(s_format.c_str(), s_dump_path.c_str(), nullptr);
