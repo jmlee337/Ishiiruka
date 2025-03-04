@@ -117,6 +117,7 @@ void VideoConfig::Load(const std::string& ini_file)
 	settings->Get("UseFFV1", &bUseFFV1, 0);
 	settings->Get("DumpFormat", &sDumpFormat, "avi");
 	settings->Get("DumpCodec", &sDumpCodec, "");
+	settings->Get("DumpEncoder", &sDumpEncoder, "");
 	settings->Get("DumpPath", &sDumpPath, "");
 	settings->Get("BitrateKbps", &iBitrateKbps, 2500);
 	settings->Get("InternalResolutionFrameDumps", &bInternalResolutionFrameDumps, 0);
@@ -477,6 +478,7 @@ void VideoConfig::Save(const std::string& ini_file)
 	settings->Set("UseFFV1", bUseFFV1);
 	settings->Set("DumpFormat", sDumpFormat);
 	settings->Set("DumpCodec", sDumpCodec);
+	settings->Set("DumpEncoder", sDumpEncoder);
 	settings->Set("DumpPath", sDumpPath);
 	settings->Set("BitrateKbps", iBitrateKbps);
 	settings->Set("EnablePixelLighting", bEnablePixelLighting);

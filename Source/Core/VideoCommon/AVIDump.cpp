@@ -189,12 +189,23 @@ bool AVIDump::CreateVideoFile()
 
 	const AVCodec* codec = nullptr;
 
-	if (!(codec = avcodec_find_encoder(codec_id)) ||
-		!(s_codec_context = avcodec_alloc_context3(codec)))
+  if (!g_Config.sDumpEncoder.empty())
+  {
+    codec = avcodec_find_encoder_by_name(g_Config.sDumpEncoder.c_str());
+    if (!codec)
+      WARN_LOG(VIDEO, "Invalid encoder %s", g_Config.sDumpEncoder.c_str());
+  }
+  if (!codec)
+    codec = avcodec_find_encoder(codec_id);
+
+	s_codec_context = avcodec_alloc_context3(codec);
+	if (!codec ||	!s_codec_context)
 	{
 		ERROR_LOG(VIDEO, "Could not find encoder or allocate codec context");
 		return false;
 	}
+
+	NOTICE_LOG(VIDEO, "Encoder %s", codec->name);
 
 	// Force XVID FourCC for better compatibility
 	if (codec->id == AV_CODEC_ID_MPEG4)
